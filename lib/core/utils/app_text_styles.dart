@@ -42,68 +42,68 @@ class AppTextStyles {
 
   /// Screen title — 30sp bold. e.g. "What should we call you?"
   static TextStyle h1({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 30.sp,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-        color: color ?? AppColors.textHeading,
-      );
+    fontFamily: 'Inter',
+    fontSize: 30.sp,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    color: color ?? AppColors.textHeading,
+  );
 
   /// Section title — 22sp bold. e.g. "Live Now", "Recommended".
   static TextStyle h2({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 22.sp,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-        color: color ?? AppColors.textHeading,
-      );
+    fontFamily: 'Inter',
+    fontSize: 22.sp,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    color: color ?? AppColors.textHeading,
+  );
 
   /// Card / player title — 16sp bold.
   static TextStyle h3({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 16.sp,
-        fontWeight: FontWeight.w700,
-        height: 1.3,
-        color: color ?? AppColors.textHeading,
-      );
+    fontFamily: 'Inter',
+    fontSize: 16.sp,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
+    color: color ?? AppColors.textHeading,
+  );
 
   // ─── Body (Inter) ────────────────────────────────────────────────────────
 
   /// Body — Inter Regular 14sp.
   static TextStyle body({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 14.sp,
-        fontWeight: FontWeight.w400,
-        height: 1.45,
-        color: color ?? AppColors.textHeading,
-      );
+    fontFamily: 'Inter',
+    fontSize: 14.sp,
+    fontWeight: FontWeight.w400,
+    height: 1.45,
+    color: color ?? AppColors.textHeading,
+  );
 
   /// Body emphasis — Inter Medium 13sp.
   static TextStyle bodyMedium({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 13.sp,
-        fontWeight: FontWeight.w500,
-        height: 1.4,
-        color: color ?? AppColors.textHeading,
-      );
+    fontFamily: 'Inter',
+    fontSize: 13.sp,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
+    color: color ?? AppColors.textHeading,
+  );
 
   /// Muted caption / metadata — Inter Regular 11.5sp.
   static TextStyle caption({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 11.5.sp,
-        fontWeight: FontWeight.w400,
-        height: 1.35,
-        color: color ?? AppColors.textBodyMuted,
-      );
+    fontFamily: 'Inter',
+    fontSize: 11.5.sp,
+    fontWeight: FontWeight.w400,
+    height: 1.35,
+    color: color ?? AppColors.textBodyMuted,
+  );
 
   /// Button label — Inter Bold 15sp.
   static TextStyle button({Color? color}) => TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 15.sp,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-        color: color ?? AppColors.onAccent,
-      );
+    fontFamily: 'Inter',
+    fontSize: 15.sp,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    color: color ?? AppColors.onAccent,
+  );
 
   // ─── Mono ────────────────────────────────────────────────────────────────
 

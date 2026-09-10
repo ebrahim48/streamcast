@@ -2,17 +2,17 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/routes/app_routes.dart';
-import '../../../../core/services/storage_service.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
 
 /// Drives the single onboarding step: pick a display name.
 ///
 /// There is no account here — the name is written straight to
 /// [StorageService] and never leaves the device.
 class OnboardingController extends GetxController {
-  OnboardingController({required StorageService storageService})
-      : _storage = storageService;
+  OnboardingController({required ProfileController profileController})
+    : _profile = profileController;
 
-  final StorageService _storage;
+  final ProfileController _profile;
 
   final TextEditingController nameController = TextEditingController();
   final FocusNode nameFocus = FocusNode();
@@ -36,7 +36,7 @@ class OnboardingController extends GetxController {
   }
 
   /// Validates, persists the name, and moves on to the main shell.
-  void submit() {
+  Future<void> submit() async {
     final name = nameController.text.trim();
     if (name.isEmpty) {
       showEmptyError.value = true;
@@ -44,9 +44,11 @@ class OnboardingController extends GetxController {
       return;
     }
 
-    _storage.setString(StorageKeys.userName, name);
-    _storage.setBool(StorageKeys.onboarded, true);
-    Get.offAllNamed(AppRoutes.main);
+    if (!await _profile.completeOnboarding(name)) {
+      showEmptyError.value = true;
+      return;
+    }
+    await Get.offAllNamed(AppRoutes.main);
   }
 
   @override

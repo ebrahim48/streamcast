@@ -1,5 +1,21 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 
+import '../../features/ads/domain/services/ad_service.dart';
+import '../../features/ads/presentation/controllers/ad_controller.dart';
+import '../../features/cast/data/repositories/cast_repository.dart';
+import '../../features/cast/domain/services/cast_service.dart';
+import '../../features/cast/presentation/controllers/cast_controller.dart';
+import '../../features/library/data/repositories/library_repository.dart';
+import '../../features/library/domain/services/library_service.dart';
+import '../../features/library/presentation/controllers/library_controller.dart';
+import '../../features/premium/data/repositories/premium_repository.dart';
+import '../../features/premium/domain/services/premium_service.dart';
+import '../../features/premium/presentation/controllers/premium_controller.dart';
+import '../../features/profile/data/repositories/profile_repository.dart';
+import '../../features/profile/domain/services/profile_service.dart';
+import '../../features/profile/presentation/controllers/profile_controller.dart';
 import '../services/api_service.dart';
 import '../services/cache_service.dart';
 import '../services/connectivity_service.dart';
@@ -7,29 +23,30 @@ import '../services/storage_service.dart';
 
 /// App-wide dependency graph, wired with GetX.
 ///
-/// Only things that must outlive a single route live here: the core services.
-/// Feature repositories, domain services and controllers are registered in
-/// their route's [Bindings] (see `app_pages.dart`) so GetX can dispose them
-/// when the user leaves the screen.
+/// Two tiers live here:
 ///
-/// **Phase 1 note:** [ApiService] is registered but unused — every feed reads
-/// from the static mock source in `core/data/`. Repositories keep the same
-/// signature, so switching a feature to the network later is a change inside
-/// that one repository.
+/// - **Core services** — API, cache, connectivity, storage.
+/// - **Session controllers** — cast, premium, library, profile and ads. These
+///   are permanent because their state crosses screens: a cast survives
+///   navigation, the premium flag hides ads on three different pages, a watch
+///   recorded on the player must already be in the library rail, a rename has
+///   to reach the library header, and ad watch-time accrues across streams
+///   rather than resetting on every navigation.
 ///
-/// ```dart
-/// void main() async {
-///   WidgetsFlutterBinding.ensureInitialized();
-///   await DependencyInjection.init();
-///   runApp(const StreamCastApp());
-/// }
-/// ```
+/// Everything else — home, explore, watch, creator studio — is route-scoped and
+/// registered in its route's [Bindings] (see `app_pages.dart`), so GetX
+/// disposes it when the user leaves.
+///
+/// **Phase 1 note:** [ApiService] is registered but never called; every feed
+/// reads from `core/data/mock_data.dart`. Repositories keep their signatures,
+/// so moving a feature onto the network is a change inside that repository.
 class DependencyInjection {
   DependencyInjection._();
 
-  /// Registers core services. Call once, before `runApp`.
+  /// Registers core services and session controllers. Call once before
+  /// `runApp`.
   static Future<void> init() async {
-    // Lazy singletons — created on first `Get.find`, recreated if deleted.
+    // ─── Core services ─────────────────────────────────────────────────────
     Get.lazyPut<CacheService>(() => CacheService(), fenix: true);
     Get.lazyPut<ApiService>(() => ApiService(), fenix: true);
     Get.lazyPut<ConnectivityService>(() => ConnectivityService(), fenix: true);
@@ -39,6 +56,59 @@ class DependencyInjection {
     final storageService = StorageService();
     await storageService.init();
     Get.put<StorageService>(storageService, permanent: true);
+
+    // ─── Casting ───────────────────────────────────────────────────────────
+    // The service is registered too, not just the controller: the watch page
+    // asks it how a given platform casts, and must consult the same instance
+    // that owns the live session.
+    final castService = CastService(castRepository: CastRepository());
+    Get.put<CastService>(castService, permanent: true);
+    Get.put<CastController>(
+      CastController(castService: castService),
+      permanent: true,
+    );
+    // Bring up the Cast context now so the first tap on the cast icon starts
+    // discovering rather than initialising. No-ops off Android/iOS.
+    unawaited(castService.init());
+
+    // ─── Premium ───────────────────────────────────────────────────────────
+    Get.put<PremiumController>(
+      PremiumController(
+        premiumService: PremiumService(
+          premiumRepository: PremiumRepository(storageService: storageService),
+        ),
+      ),
+      permanent: true,
+    );
+
+    // ─── Library ───────────────────────────────────────────────────────────
+    Get.put<LibraryController>(
+      LibraryController(
+        libraryService: LibraryService(
+          libraryRepository: LibraryRepository(storageService: storageService),
+        ),
+      ),
+      permanent: true,
+    );
+
+    // ─── Profile ───────────────────────────────────────────────────────────
+    Get.put<ProfileController>(
+      ProfileController(
+        profileService: ProfileService(
+          profileRepository: ProfileRepository(storageService: storageService),
+        ),
+      ),
+      permanent: true,
+    );
+
+    // ─── Ads ───────────────────────────────────────────────────────────────
+    Get.put<AdController>(
+      AdController(
+        adService: AdService(),
+        premiumController: Get.find<PremiumController>(),
+      ),
+      permanent: true,
+    );
   }
 
   /// Drops every registered dependency. Useful between tests.

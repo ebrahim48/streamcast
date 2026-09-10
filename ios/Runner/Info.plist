@@ -66,5 +66,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Google Cast discovery browses the local network for receivers. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>StreamCast uses the local network to find Cast-enabled TVs on your Wi-Fi.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_CC1AD845._googlecast._tcp</string>
+		<string>_googlecast._tcp</string>
+	</array>
+	<!-- Photo library access for the profile picture. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>StreamCast needs access to your photos so you can choose a profile picture.</string>
 </dict>
 </plist>

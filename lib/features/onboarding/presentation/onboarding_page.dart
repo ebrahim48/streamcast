@@ -125,7 +125,7 @@ class _NameField extends StatelessWidget {
   }
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppDimens.radiusInput.r),
-        borderSide: BorderSide(color: color),
-      );
+    borderRadius: BorderRadius.circular(AppDimens.radiusInput.r),
+    borderSide: BorderSide(color: color),
+  );
 }

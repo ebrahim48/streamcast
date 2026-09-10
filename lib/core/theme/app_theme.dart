@@ -63,7 +63,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.bgSurfaceElevated,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: _inputBorder(AppColors.borderLine),
         enabledBorder: _inputBorder(AppColors.borderLine),
         focusedBorder: _inputBorder(AppColors.accentSignal),
@@ -79,7 +82,7 @@ class AppTheme {
   }
 
   static OutlineInputBorder _inputBorder(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppDimens.radiusInput),
-        borderSide: BorderSide(color: color, width: 1),
-      );
+    borderRadius: BorderRadius.circular(AppDimens.radiusInput),
+    borderSide: BorderSide(color: color, width: 1),
+  );
 }

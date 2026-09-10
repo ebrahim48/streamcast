@@ -19,11 +19,8 @@ abstract class AppRoutes {
   /// Bottom-nav shell hosting home / explore / premium / library.
   static const String main = '/main';
 
-  // ─── Tabs ────────────────────────────────────────────────────────────────
-  static const String home = '/home';
-  static const String explore = '/explore';
-  static const String premium = '/premium';
-  static const String library = '/library';
+  // The four tabs are pages inside the shell's IndexedStack, not routes — move
+  // between them with MainShellController, not Get.toNamed.
 
   // ─── Stacked pages ───────────────────────────────────────────────────────
   static const String premiumSuccess = '/premium/success';

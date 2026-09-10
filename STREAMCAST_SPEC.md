@@ -407,13 +407,147 @@ Playback strategy per platform:
 |---|---|---|
 | **0** | Clean old food-delivery code, add theme/tokens/fonts, shared widgets | ✅ |
 | **1** | **Splash** (wave rings + progress) + **Onboarding** (name entry, 3 states) | ✅ |
-| 2 | MainShell + Bottom nav + Home (live rail, recommended grid, ad card) | 🟡 shell + nav done, Home pending ← _next_ |
-| 3 | Watch page (4 states) + Chat/Comments tabs + up-next | ⬜ |
-| 4 | Cast sheets (4 states) + casting-active banner | ⬜ |
-| 5 | Explore (search + platform filters) | ⬜ |
-| 6 | Premium + success | ⬜ |
-| 7 | My Library + Edit Profile | ⬜ |
-| 8 | Add Link sheet + Creator Studio | ⬜ |
-| 9 | Real playback (WebView/YouTube) + Google Cast SDK wiring + ad timers | ⬜ |
+| 2 | MainShell + Bottom nav + Home (live rail, recommended grid, ad card) | ✅ |
+| 3 | Watch page (4 states) + Chat/Comments tabs + up-next | ✅ |
+| 4 | Cast sheets (4 states) + casting-active banner | ✅ |
+| 5 | Explore (search + platform filters) | ✅ |
+| 6 | Premium + success | ✅ |
+| 7 | My Library + Edit Profile | ✅ |
+| 8 | Add Link sheet + Creator Studio | ✅ |
+| 9 | Real playback (WebView/YouTube) + Google Cast SDK wiring + ad timers | ✅ |
 
-**Rule:** all data is static/mock in steps 1–8. API stays hidden. Each step ends with a working build before moving on.
+**Rule:** all data is static/mock in steps 1–8. API stays hidden. Each step ends with a working build before moving on. Step 9 replaces the poster-frame player and the simulated cast with the real ones; the feed itself is still static.
+
+---
+
+## 10. Notes from the build (steps 0–8)
+
+**Tabs are not routes.** Home / Explore / Premium / My Library live in one
+`IndexedStack` inside `MainShellPage`, so "open Premium" from a card tap moves
+`MainShellController.tab` rather than pushing a page. `AppRoutes` therefore has
+no tab constants — only `/splash`, `/onboarding`, `/main`, and the four stacked
+pages (`/watch`, `/premium/success`, `/profile/edit`, `/studio`).
+
+**Which controllers are permanent.** `CastController`, `PremiumController`,
+`LibraryController` and `ProfileController` are registered in
+`DependencyInjection.init()` because their state crosses screens — a cast
+survives navigation, the premium flag hides ads on three pages, a watch
+recorded on the player must already be in the library rail, and a rename has to
+reach the library header. Home, Explore, Watch and Creator Studio are
+route-scoped in `app_pages.dart`.
+
+**The profile owns the name.** Onboarding writes through
+`ProfileController.completeOnboarding()` rather than to `StorageService`
+directly; a direct write left the permanent controller holding a stale, empty
+name for the rest of the session.
+
+**Thumbnails are placeholder-sourced.** `StreamThumbnail` fetches by a stable
+`thumbnailSeed`, so a card always shows the same image, and falls back to a
+gradient + TV glyph offline. Real artwork changes `_imageUrl` alone.
+
+**GetX reactivity gotcha, hit repeatedly.** `Obx(() => SomeWidget(controller))`
+tracks nothing when the observable is read inside `SomeWidget.build` — that runs
+after the closure returns. Every reactive read has to happen *inside* the `Obx`
+closure, and an `RxList` passed by reference registers no read either; snapshot
+it with `.toList()`.
+
+**Test-font caveat.** `flutter test` renders with a fixed-width test font, so
+chips, buttons and rails are far wider than on device. Cards and the app bar
+were made overflow-proof for it (`Flexible` / `FittedBox`), and tests that reach
+a horizontally scrolled chip or an off-screen send button call
+`tester.ensureVisible` first.
+
+**Verified at the end of step 8:** `flutter analyze` clean, 22/22 tests pass,
+`flutter build apk --debug` succeeds.
+
+---
+
+## 11. Step 9 — real playback, casting and ads
+
+### 11.1 Packages added
+`webview_flutter` (platform embeds) · `video_player` (direct MP4/HLS) ·
+`flutter_chrome_cast` (binds the real Google Cast SDK on Android and iOS).
+
+### 11.2 Playback
+`PlaybackService` turns a source link into something playable and owns the
+per-platform embed rules, which differ more than they look:
+
+| Platform | Embed | Note |
+|---|---|---|
+| YouTube | `youtube.com/embed/<id>?playsinline=1` | accepts `watch?v=` and `youtu.be/` forms |
+| Vimeo | `player.vimeo.com/video/<id>` | |
+| Twitch | `player.twitch.tv/?channel=…` live, `?video=…` for a VOD | needs a `parent` matching the WebView origin |
+| Kick | `player.kick.com/<channel>` | **live only** — VODs return no embed |
+| Facebook | `facebook.com/plugins/video.php?href=…` | |
+| Direct | — | `video_player`, MP4/HLS |
+
+`StreamPlayerView` runs both engines behind one widget and shows the poster
+frame until the viewer taps play, so opening a page never starts a stream — and
+the ad clock only starts when playback does.
+
+### 11.3 Casting — what actually works
+The Default Media Receiver plays **media URLs, not web pages**. That splits the
+platforms three ways, which `CastService.availabilityFor` returns:
+
+| | Behaviour |
+|---|---|
+| `castable` | Direct MP4/HLS — StreamCast loads it on the receiver itself. **Works today.** |
+| `nativeOnly` | YouTube — casts from its own button inside the embed, exactly as the design says. |
+| `needsRelay` | Twitch, Kick, Vimeo, Facebook — web-only players with no castable URL. |
+
+**The relay is not deployed.** `CastConfig.relayEndpoint` is empty, so those
+platforms report `needsRelay` and the cast sheet says so in plain words rather
+than connecting and playing nothing. Set `--dart-define=STREAMCAST_RELAY=<url>`
+once a server republishes those streams as HLS and they become castable with no
+other change.
+
+Discovery is a **live stream**, not a one-shot scan — receivers appear and
+vanish as they wake — so the sheet waits up to `CastController.discoveryTimeout`
+(8s) before declaring the network empty. Off Android/iOS the repository reports
+no support instead of throwing, and the sheet says casting needs a phone.
+
+`live_relay` in the mock feed is a real public HLS stream, so end-to-end casting
+is exercisable on a device without waiting for the relay.
+
+### 11.4 Ads
+`AdService` schedules a break at a **random point inside the 3–4 minute
+window** — a fixed interval feels metronomic. `AdController` runs the clock only
+while something is playing, so time spent reading comments doesn't count and a
+viewer who never presses play is never interrupted. Breaks are suppressed for
+premium and during a 30-minute reward grant (session-only, so it can't be
+farmed across launches). Skipping unlocks 5s into a 15s break.
+
+`AdOverlay` covers the player frame only — chat and comments keep running
+underneath, and the back and cast buttons sit *above* the overlay so a break
+never traps the viewer. Native playback pauses for the break; a cross-origin
+platform embed cannot be scripted, so a break covers it rather than stopping it.
+
+**No ad network is wired.** The scheduler, countdown, skip gate and reward grant
+are real; the creative is a house promo for Premium. An SDK's loaded ad slots
+into `AdController._present`.
+
+### 11.5 Platform configuration
+- **Android** — `INTERNET`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, network/Wi-Fi
+  and multicast permissions; the Cast `OPTIONS_PROVIDER_CLASS_NAME` meta-data
+  and `MediaNotificationService`.
+- **iOS** — `NSLocalNetworkUsageDescription`, `NSBonjourServices`
+  (`_CC1AD845._googlecast._tcp`), and `NSPhotoLibraryUsageDescription` for the
+  avatar picker.
+- **iOS minimum version is now 15.0**, raised from 13.0 in
+  `ios/Runner.xcodeproj/project.pbxproj` (all three build configurations). The
+  Cast SDK Swift package refuses to build below 15.0, so this is the floor for
+  as long as casting is in the app. It drops iOS 13 and 14 devices — worth
+  confirming against the client's install base. The project has no Podfile; it
+  uses Swift Package Manager, so this setting is the only place the floor is
+  declared.
+
+### 11.6 Known caveats
+- `flutter_chrome_cast` still applies the Kotlin Gradle Plugin; the build warns
+  that a future Flutter will reject that. Upstream fix, not ours.
+- The Twitch/Kick embed `parent` is `localhost`, matching the WebView's base
+  URL. A build served from a real domain must change
+  `PlaybackService.embedParent` and register that domain with Twitch.
+
+**Verified at the end of step 9:** `flutter analyze` clean, 45/45 tests pass,
+`flutter build apk --debug` and `--release` succeed, and
+`flutter build ios --simulator --debug` succeeds.

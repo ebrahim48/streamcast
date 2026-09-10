@@ -85,11 +85,16 @@ class ScButton extends StatelessWidget {
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (icon != null) ...[
-          icon!,
-          SizedBox(width: AppDimens.gapSm.w),
-        ],
-        Text(label, style: AppTextStyles.button(color: _labelColor)),
+        if (icon != null) ...[icon!, SizedBox(width: AppDimens.gapSm.w)],
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.button(color: _labelColor),
+          ),
+        ),
       ],
     );
 

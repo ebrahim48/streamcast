@@ -26,6 +26,9 @@ dependencies:
   shared_preferences: ^2.3.2
   flutter_svg: ^2.0.10+1
   image_picker: ^1.1.2
+  webview_flutter: ^4.14.1
+  video_player: ^2.14.0
+  flutter_chrome_cast: ^1.4.8
 
 dev_dependencies:
   flutter_test:

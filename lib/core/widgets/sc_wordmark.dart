@@ -23,26 +23,22 @@ enum WordmarkSize {
 /// The small preset renders mixed case as it appears in the app bar; the larger
 /// presets render UPPERCASE Roboto Condensed as in the design.
 class ScWordmark extends StatelessWidget {
-  const ScWordmark({
-    super.key,
-    this.size = WordmarkSize.sm,
-    this.glow = false,
-  });
+  const ScWordmark({super.key, this.size = WordmarkSize.sm, this.glow = false});
 
   final WordmarkSize size;
   final bool glow;
 
   double get _fontSize => switch (size) {
-        WordmarkSize.sm => 18,
-        WordmarkSize.md => 24,
-        WordmarkSize.lg => 34,
-      };
+    WordmarkSize.sm => 18,
+    WordmarkSize.md => 24,
+    WordmarkSize.lg => 34,
+  };
 
   double get _dotSize => switch (size) {
-        WordmarkSize.sm => 8,
-        WordmarkSize.md => 11,
-        WordmarkSize.lg => 15,
-      };
+    WordmarkSize.sm => 8,
+    WordmarkSize.md => 11,
+    WordmarkSize.lg => 15,
+  };
 
   String get _label => size == WordmarkSize.sm
       ? AppStrings.appName

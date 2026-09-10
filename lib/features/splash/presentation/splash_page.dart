@@ -4,13 +4,13 @@ import 'package:get/get.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../core/routes/app_routes.dart';
-import '../../../core/services/storage_service.dart';
 import '../../../core/utils/app_colors.dart';
 import '../../../core/utils/app_dimens.dart';
 import '../../../core/utils/app_text_styles.dart';
 import '../../../core/widgets/mono_tag.dart';
 import '../../../core/widgets/sc_wordmark.dart';
 import '../../../core/widgets/signal_rings.dart';
+import '../../profile/presentation/controllers/profile_controller.dart';
 
 /// First frame the user sees: expanding signal rings behind the wordmark, with
 /// a determinate bar that fills over 1.5s while the app settles.
@@ -27,8 +27,7 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage>
-    with TickerProviderStateMixin {
+class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   /// Drives the wordmark's fade + scale-in.
   late final AnimationController _entry = AnimationController(
     vsync: this,
@@ -49,9 +48,8 @@ class _SplashPageState extends State<SplashPage>
 
   void _goNext() {
     if (!mounted) return;
-    final storage = Get.find<StorageService>();
-    final onboarded = storage.getBool(StorageKeys.onboarded) ?? false;
-    Get.offAllNamed(onboarded ? AppRoutes.main : AppRoutes.onboarding);
+    final hasProfile = Get.find<ProfileController>().name.value.isNotEmpty;
+    Get.offAllNamed(hasProfile ? AppRoutes.main : AppRoutes.onboarding);
   }
 
   @override
@@ -102,9 +100,7 @@ class _SplashPageState extends State<SplashPage>
                     SizedBox(height: AppDimens.gapMd.h),
                     Text(
                       AppStrings.tagline,
-                      style: AppTextStyles.bodyMedium(
-                        color: AppColors.textDim,
-                      ),
+                      style: AppTextStyles.bodyMedium(color: AppColors.textDim),
                     ),
                   ],
                 ),
