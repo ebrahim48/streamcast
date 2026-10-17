@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 
 import '../../features/ads/domain/services/ad_service.dart';
 import '../../features/ads/presentation/controllers/ad_controller.dart';
+import '../../features/auth/data/repositories/auth_repository.dart';
+import '../../features/auth/domain/services/auth_service.dart';
 import '../../features/cast/data/repositories/cast_repository.dart';
 import '../../features/cast/domain/services/cast_service.dart';
 import '../../features/cast/presentation/controllers/cast_controller.dart';
@@ -26,8 +28,9 @@ import '../services/storage_service.dart';
 /// Two tiers live here:
 ///
 /// - **Core services** — API, cache, connectivity, storage.
-/// - **Session controllers** — cast, premium, library, profile and ads. These
-///   are permanent because their state crosses screens: a cast survives
+/// - **Session controllers** — auth, cast, premium, library, profile and ads.
+///   These are permanent because their state crosses screens: the splash needs
+///   the auth session before its first frame, a cast survives
 ///   navigation, the premium flag hides ads on three different pages, a watch
 ///   recorded on the player must already be in the library rail, a rename has
 ///   to reach the library header, and ad watch-time accrues across streams
@@ -56,6 +59,16 @@ class DependencyInjection {
     final storageService = StorageService();
     await storageService.init();
     Get.put<StorageService>(storageService, permanent: true);
+
+    // ─── Auth ──────────────────────────────────────────────────────────────
+    // Permanent because the splash asks it whether a session is already open
+    // before it decides between onboarding, the sign-in screen and the feed.
+    Get.put<AuthService>(
+      AuthService(
+        authRepository: AuthRepository(storageService: storageService),
+      ),
+      permanent: true,
+    );
 
     // ─── Casting ───────────────────────────────────────────────────────────
     // The service is registered too, not just the controller: the watch page

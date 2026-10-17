@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:streamcast_app/app.dart';
 import 'package:streamcast_app/core/di/dependency_injection.dart';
 
-const _pastSplash = Duration(seconds: 3);
-const _pastFeedLoad = Duration(seconds: 2);
+import 'support/entry_flow.dart';
 
 void main() {
   setUp(() async {
@@ -13,19 +11,6 @@ void main() {
     DependencyInjection.clear();
     await DependencyInjection.init();
   });
-
-  Future<void> pumpToHome(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1125, 2436);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(const StreamCastApp());
-    await tester.pumpAndSettle(_pastSplash);
-    await tester.enterText(find.byType(TextField), 'Ryan');
-    await tester.pump();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle(_pastFeedLoad);
-  }
 
   Future<void> openSheetAndFill(WidgetTester tester) async {
     await tester.tap(find.text('Add Link'));

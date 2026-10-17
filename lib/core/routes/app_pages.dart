@@ -1,6 +1,15 @@
 import 'package:get/get.dart';
 
 import '../../features/ads/presentation/controllers/ad_controller.dart';
+import '../../features/auth/domain/services/auth_service.dart';
+import '../../features/auth/presentation/controllers/password_reset_controller.dart';
+import '../../features/auth/presentation/controllers/sign_in_controller.dart';
+import '../../features/auth/presentation/controllers/sign_up_controller.dart';
+import '../../features/auth/presentation/forgot_password_page.dart';
+import '../../features/auth/presentation/reset_password_page.dart';
+import '../../features/auth/presentation/sign_in_page.dart';
+import '../../features/auth/presentation/sign_up_page.dart';
+import '../../features/auth/presentation/verify_code_page.dart';
 import '../../features/cast/domain/services/cast_service.dart';
 import '../../features/creator_studio/data/repositories/team_repository.dart';
 import '../../features/creator_studio/domain/services/team_service.dart';
@@ -49,6 +58,30 @@ abstract class AppPages {
       transition: Transition.fadeIn,
     ),
     GetPage(
+      name: AppRoutes.signIn,
+      page: () => const SignInPage(),
+      binding: SignInBinding(),
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: AppRoutes.signUp,
+      page: () => const SignUpPage(),
+      binding: SignUpBinding(),
+      transition: Transition.fadeIn,
+    ),
+    GetPage(
+      name: AppRoutes.forgotPassword,
+      page: () => const ForgotPasswordPage(),
+      binding: PasswordResetBinding(),
+    ),
+    // The two screens after Forgot Password share its controller — no binding
+    // of their own, or each would install a second, empty reset flow.
+    GetPage(name: AppRoutes.verifyCode, page: () => const VerifyCodePage()),
+    GetPage(
+      name: AppRoutes.resetPassword,
+      page: () => const ResetPasswordPage(),
+    ),
+    GetPage(
       name: AppRoutes.main,
       page: () => const MainShellPage(),
       binding: MainShellBinding(),
@@ -71,6 +104,39 @@ abstract class AppPages {
       binding: CreatorStudioBinding(),
     ),
   ];
+}
+
+/// The Log In screen's controller.
+class SignInBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<SignInController>(
+      () => SignInController(authService: Get.find<AuthService>()),
+    );
+  }
+}
+
+/// The Sign Up screen's controller.
+class SignUpBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.lazyPut<SignUpController>(
+      () => SignUpController(authService: Get.find<AuthService>()),
+    );
+  }
+}
+
+/// The recovery flow's controller, installed by the first of its three screens.
+///
+/// It is put rather than lazily bound so the verify and reset routes, which
+/// carry no binding, always find it already in place.
+class PasswordResetBinding extends Bindings {
+  @override
+  void dependencies() {
+    Get.put<PasswordResetController>(
+      PasswordResetController(authService: Get.find<AuthService>()),
+    );
+  }
 }
 
 /// Route-scoped dependencies for the onboarding step.

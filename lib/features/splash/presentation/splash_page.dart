@@ -10,13 +10,15 @@ import '../../../core/utils/app_text_styles.dart';
 import '../../../core/widgets/mono_tag.dart';
 import '../../../core/widgets/sc_wordmark.dart';
 import '../../../core/widgets/signal_rings.dart';
+import '../../auth/domain/services/auth_service.dart';
 import '../../profile/presentation/controllers/profile_controller.dart';
 
 /// First frame the user sees: expanding signal rings behind the wordmark, with
 /// a determinate bar that fills over 1.5s while the app settles.
 ///
-/// After [_holdDuration] it hands off to onboarding, or straight to the shell
-/// if a name has already been stored on this device.
+/// After [_holdDuration] it hands off to whichever step is still outstanding:
+/// onboarding when there is no name yet, the sign-in screen when there is a
+/// name but no open session, and the feed when both are already in place.
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -48,8 +50,17 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
   void _goNext() {
     if (!mounted) return;
+
     final hasProfile = Get.find<ProfileController>().name.value.isNotEmpty;
-    Get.offAllNamed(hasProfile ? AppRoutes.main : AppRoutes.onboarding);
+    if (!hasProfile) {
+      Get.offAllNamed<void>(AppRoutes.onboarding);
+      return;
+    }
+
+    // A returning user lands on Log In, not Sign Up — they already have an
+    // account, they just aren't carrying a session.
+    final isSignedIn = Get.find<AuthService>().isSignedIn;
+    Get.offAllNamed<void>(isSignedIn ? AppRoutes.main : AppRoutes.signIn);
   }
 
   @override

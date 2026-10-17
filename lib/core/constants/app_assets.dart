@@ -28,4 +28,7 @@ class AppAssets {
   static const String iconCircle = '$_icon/circle.svg';
   static const String iconCast = '$_icon/net.svg';
   static const String iconMessage = '$_icon/message.svg';
+
+  /// Google's four-colour `G`, for the social sign-in button.
+  static const String iconGoogle = '$_icon/google.svg';
 }

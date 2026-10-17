@@ -114,6 +114,17 @@ abstract class StorageKeys {
   /// Whether onboarding has been completed. `bool`
   static const String onboarded = 'sc_onboarded';
 
+  // ─── Auth ────────────────────────────────────────────────────────────────
+
+  /// Registered accounts, keyed by lowercased email, as a JSON string.
+  static const String authAccounts = 'sc_auth_accounts';
+
+  /// Email of the signed-in account, absent when signed out. `String`
+  static const String authSession = 'sc_auth_session';
+
+  /// The in-flight password-reset challenge, as a JSON string.
+  static const String authResetChallenge = 'sc_auth_reset_challenge';
+
   // ─── Monetization ────────────────────────────────────────────────────────
 
   /// Whether the premium tier is active. `bool`

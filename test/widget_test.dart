@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:streamcast_app/app.dart';
 import 'package:streamcast_app/core/di/dependency_injection.dart';
 import 'package:streamcast_app/core/models/stream_item.dart';
+import 'package:streamcast_app/core/routes/app_routes.dart';
+import 'package:streamcast_app/core/services/storage_service.dart';
 import 'package:streamcast_app/core/utils/formatters.dart';
+import 'package:streamcast_app/features/auth/data/repositories/auth_repository.dart';
+import 'package:streamcast_app/features/auth/domain/services/auth_service.dart';
 
-/// Long enough to clear the splash hold (1600ms) and its progress animation.
-const _pastSplash = Duration(seconds: 3);
-
-/// Long enough for the mocked repository latency behind the home feed.
-const _pastFeedLoad = Duration(seconds: 2);
+import 'support/entry_flow.dart';
 
 void main() {
   setUp(() async {
@@ -18,25 +18,6 @@ void main() {
     DependencyInjection.clear();
     await DependencyInjection.init();
   });
-
-  /// The layouts are built for a phone; the default 800×600 test surface pushes
-  /// controls outside the render tree and taps miss them.
-  Future<void> pumpApp(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1125, 2436);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(const StreamCastApp());
-  }
-
-  /// Runs the splash → onboarding → shell flow and lands on Home.
-  Future<void> pumpToHome(WidgetTester tester) async {
-    await pumpApp(tester);
-    await tester.pumpAndSettle(_pastSplash);
-    await tester.enterText(find.byType(TextField), 'Ryan');
-    await tester.pump();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle(_pastFeedLoad);
-  }
 
   group('entry flow', () {
     testWidgets('splash shows the wordmark and establishing-signal caption', (
@@ -50,14 +31,14 @@ void main() {
       expect(find.text('// establishing signal'), findsOneWidget);
 
       // Let the hand-off timer fire so it isn't pending at teardown.
-      await tester.pumpAndSettle(_pastSplash);
+      await tester.pumpAndSettle(pastSplash);
     });
 
     testWidgets('splash hands off to onboarding when no name is stored', (
       tester,
     ) async {
       await pumpApp(tester);
-      await tester.pumpAndSettle(_pastSplash);
+      await tester.pumpAndSettle(pastSplash);
 
       expect(find.text('// setup 01'), findsOneWidget);
       expect(find.text('Enter your name'), findsOneWidget);
@@ -67,7 +48,7 @@ void main() {
       tester,
     ) async {
       await pumpApp(tester);
-      await tester.pumpAndSettle(_pastSplash);
+      await tester.pumpAndSettle(pastSplash);
 
       // Whitespace passes the "has text" gate that enables the CTA but not the
       // trimmed check in submit(), so this is the path that shows the error.
@@ -78,6 +59,194 @@ void main() {
 
       expect(find.text('Please enter a name to continue.'), findsOneWidget);
       expect(find.text('// setup 01'), findsOneWidget);
+    });
+
+    testWidgets('a valid name hands off to Sign Up, not the feed', (
+      tester,
+    ) async {
+      await pumpToSignUp(tester);
+
+      expect(find.text('Sign up now'), findsOneWidget);
+      expect(find.text('// access 02'), findsOneWidget);
+      expect(find.text('Live Now'), findsNothing);
+    });
+  });
+
+  group('auth', () {
+    testWidgets('sign up refuses a bad email and a mismatched password', (
+      tester,
+    ) async {
+      await pumpToSignUp(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'you@example.com'),
+        'not-an-email',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'At least 8 characters'),
+        'supersecret',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Repeat your password'),
+        'something-else',
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(InkWell, 'Sign Up').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text("That email address doesn't look right."), findsOneWidget);
+      expect(find.text('Both passwords must match.'), findsOneWidget);
+      expect(find.text('Sign up now'), findsOneWidget);
+    });
+
+    testWidgets('a short password is rejected before any call is made', (
+      tester,
+    ) async {
+      await pumpToSignUp(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'you@example.com'),
+        'ryan@streamcast.app',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'At least 8 characters'),
+        'short',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Repeat your password'),
+        'short',
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(InkWell, 'Sign Up').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Use at least 8 characters.'), findsOneWidget);
+    });
+
+    testWidgets('the tabs swap between Log In and Sign Up', (tester) async {
+      await pumpToSignUp(tester);
+
+      await tester.tap(find.widgetWithText(InkWell, 'Log In').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign in now'), findsOneWidget);
+      expect(find.text('// access 01'), findsOneWidget);
+      expect(find.text('Forget password'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(InkWell, 'Sign Up').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign up now'), findsOneWidget);
+    });
+
+    testWidgets('signing up opens a session and lands on the feed', (
+      tester,
+    ) async {
+      await pumpToHome(tester);
+
+      expect(find.text('Live Now'), findsOneWidget);
+      expect(find.text('Sign up now'), findsNothing);
+    });
+
+    testWidgets('an unknown account cannot log in', (tester) async {
+      await pumpToSignUp(tester);
+      await tester.tap(find.widgetWithText(InkWell, 'Log In').first);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'you@example.com'),
+        'nobody@streamcast.app',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Your password'),
+        'supersecret',
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(InkWell, 'Log In').last);
+      await tester.pumpAndSettle(pastNetwork);
+
+      expect(find.text('Email or password is incorrect.'), findsOneWidget);
+      expect(find.text('Sign in now'), findsOneWidget);
+    });
+
+    testWidgets('Continue with Google goes straight through to the feed', (
+      tester,
+    ) async {
+      await pumpToSignUp(tester);
+
+      await tester.ensureVisible(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle(pastNetwork);
+
+      expect(find.text('Live Now'), findsOneWidget);
+    });
+
+    testWidgets('forgot password walks code → new password → log in', (
+      tester,
+    ) async {
+      await pumpToHome(tester);
+      // Restart into a signed-out session so the flow starts at Log In.
+      await Get.find<AuthService>().signOut();
+      Get.offAllNamed<void>(AppRoutes.signIn);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Forget password'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Forgot Password'), findsOneWidget);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'you@example.com'),
+        'ryan@streamcast.app',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Send Code'));
+      await tester.pumpAndSettle(pastNetwork);
+
+      expect(find.text('// recover 02'), findsOneWidget);
+
+      // The code is never emailed in this build, so read it back from the
+      // repository the same way the snackbar does.
+      final code = AuthRepository(
+        storageService: Get.find<StorageService>(),
+      ).readResetChallenge()!.code;
+
+      for (var i = 0; i < code.length; i++) {
+        await tester.enterText(find.byType(TextField).at(i), code[i]);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle(pastNetwork);
+
+      expect(find.text('// recover 03'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'At least 8 characters'),
+        'brand-new-pass',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Repeat your password'),
+        'brand-new-pass',
+      );
+      await tester.pump();
+      await tester.tap(find.text('Reset Password'));
+      await tester.pumpAndSettle(pastNetwork);
+
+      expect(find.text('Sign in now'), findsOneWidget);
+
+      // The new password is the one that works now.
+      await tester.enterText(
+        find.widgetWithText(TextField, 'you@example.com'),
+        'ryan@streamcast.app',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Your password'),
+        'brand-new-pass',
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(InkWell, 'Log In').last);
+      await tester.pumpAndSettle(pastNetwork);
+
+      expect(find.text('Live Now'), findsOneWidget);
     });
   });
 
@@ -107,7 +276,7 @@ void main() {
       await pumpToHome(tester);
 
       await tester.tap(find.text('Explore').last);
-      await tester.pumpAndSettle(_pastFeedLoad);
+      await tester.pumpAndSettle(pastNetwork);
 
       expect(find.text('All Results'), findsOneWidget);
       expect(find.text('11 items'), findsOneWidget);
@@ -117,7 +286,7 @@ void main() {
       await tester.ensureVisible(find.text('Kick'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Kick'));
-      await tester.pumpAndSettle(_pastFeedLoad);
+      await tester.pumpAndSettle(pastNetwork);
 
       expect(find.text('Kick'), findsWidgets);
       expect(find.text('2 items'), findsOneWidget);
@@ -160,7 +329,7 @@ void main() {
     Future<void> openFirstLiveStream(WidgetTester tester) async {
       await pumpToHome(tester);
       await tester.tap(find.text('VCT Grand Finals — Map 4 Overtime'));
-      await tester.pumpAndSettle(_pastFeedLoad);
+      await tester.pumpAndSettle(pastNetwork);
     }
 
     testWidgets('a live stream shows its chat, meta and up-next', (
@@ -267,7 +436,7 @@ void main() {
     ) async {
       await pumpToHome(tester);
       await tester.tap(find.text('VCT Grand Finals — Map 4 Overtime'));
-      await tester.pumpAndSettle(_pastFeedLoad);
+      await tester.pumpAndSettle(pastNetwork);
 
       await tester.tap(find.bySemanticsLabel('Cast to device'));
       await tester.pumpAndSettle();
@@ -295,10 +464,10 @@ void main() {
       expect(find.text("You're Premium!"), findsOneWidget);
 
       await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle(_pastFeedLoad);
+      await tester.pumpAndSettle(pastNetwork);
 
       await tester.tap(find.text('Home').last);
-      await tester.pumpAndSettle(_pastFeedLoad);
+      await tester.pumpAndSettle(pastNetwork);
 
       expect(find.text('Ad · 7-day trial'), findsNothing);
     });

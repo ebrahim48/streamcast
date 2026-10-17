@@ -6,8 +6,9 @@ import '../../../profile/presentation/controllers/profile_controller.dart';
 
 /// Drives the single onboarding step: pick a display name.
 ///
-/// There is no account here — the name is written straight to
-/// [StorageService] and never leaves the device.
+/// No credentials are taken here — the name is written straight to
+/// [StorageService] and never leaves the device. Securing it with an account
+/// is the next screen's job.
 class OnboardingController extends GetxController {
   OnboardingController({required ProfileController profileController})
     : _profile = profileController;
@@ -35,7 +36,11 @@ class OnboardingController extends GetxController {
     if (filled && showEmptyError.value) showEmptyError.value = false;
   }
 
-  /// Validates, persists the name, and moves on to the main shell.
+  /// Validates, persists the name, and moves on to Sign Up.
+  ///
+  /// Sign Up rather than Log In: anyone reaching this screen is naming
+  /// themselves for the first time, so they have no account to log in to. The
+  /// tabs on that screen get them across if they do.
   Future<void> submit() async {
     final name = nameController.text.trim();
     if (name.isEmpty) {
@@ -48,7 +53,7 @@ class OnboardingController extends GetxController {
       showEmptyError.value = true;
       return;
     }
-    await Get.offAllNamed(AppRoutes.main);
+    await Get.offAllNamed<void>(AppRoutes.signUp);
   }
 
   @override
